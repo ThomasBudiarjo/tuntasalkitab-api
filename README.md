@@ -13,7 +13,19 @@ export DATABASE_PATH=./bible-tracker.db
 go run .
 ```
 
-Defaults: SQLite at `./bible-tracker.db`, HTTP port `8494` (override with `PORT`). For Turso instead, set both `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to the **same database used by the website**; neither variable alone is accepted. Do not commit secrets or database files. The Android build's `TUNTAS_API_BASE_URL` must point to the public HTTPS origin serving this API, with a trailing `/`. Its default currently points at the website, which does **not** serve this separate API; configure a separate API origin or route `/api/v1/*` to this service at the website's origin. Android Google Credential Manager still requires an Android OAuth client configured with the app's package and signing certificate.
+Local defaults: SQLite at `./bible-tracker.db` and HTTP port `8494` (override with `PORT`). `DATABASE_PATH` is for local SQLite development only. Do not commit secrets or database files.
+
+## Production deployment checklist
+
+- Deploy this repository as the standalone Android API service. Do **not** deploy the website repository's closed, unmerged mobile API PR alongside it.
+- Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` for the **same Turso database used by tuntasalkitab.com**. Both are required; the service rejects a partial pair.
+- Set `GOOGLE_CLIENT_ID` to the web OAuth client ID supplied to Android Google Credential Manager as its server client ID.
+- Set `API_TOKEN_SECRET` to a stable, random secret of at least 32 bytes. Changing it invalidates every API access and refresh token. Do not reuse or invent a placeholder secret.
+- Do not run a migration or schema setup step. The Turso path executes no embedded schema, `CREATE TABLE`, or `ALTER TABLE` statements and uses only the existing `users` and `reading_progress` columns. `schema.sql` is only for local SQLite bootstrap and tests.
+- Configure Android `TUNTAS_API_BASE_URL` as this service's public HTTPS **origin with a trailing slash**, for example `https://api.example.com/`. Do not append `/api/v1/`, and do not set it to `https://tuntasalkitab.com/`; the website is not this API service.
+- Keep HTTPS termination enabled, optionally set `PORT` if the platform does not inject it, then verify `GET /health` returns `204` and `GET /api/v1/plan` returns `200` with an `ETag` header.
+
+Android Google Credential Manager also requires an Android OAuth client configured with the app's package and signing certificate.
 
 ## API (`/api/v1`)
 
